@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suno Studio</title>
+<meta name="description" content="Generate AI music with the Suno API using your own API key.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --panel: #161a22;
+    --panel-2: #1d222c;
+    --border: #2a303c;
+    --text: #e8eaf0;
+    --muted: #8b93a5;
+    --accent: #7c5cff;
+    --accent-2: #ff5c8a;
+    --ok: #3ecf8e;
+    --warn: #f5b841;
+    --err: #ff5c5c;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  a { color: var(--accent); }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: grid; place-items: center; font-size: 20px;
+  }
+  h1 { font-size: 22px; margin: 0; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0; }
+  .credits { font-size: 13px; color: var(--muted); background: var(--panel); border: 1px solid var(--border); padding: 6px 12px; border-radius: 999px; }
+  .credits b { color: var(--text); }
+
+  .grid { display: grid; grid-template-columns: 420px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+  .card + .card { margin-top: 16px; }
+  .card h2 { font-size: 15px; margin: 0 0 12px; }
+
+  label { display: block; font-size: 13px; font-weight: 500; margin: 12px 0 6px; }
+  label .hint { color: var(--muted); font-weight: 400; }
+  input[type=text], input[type=password], textarea, select {
+    width: 100%; background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+    font: inherit; font-size: 14px;
+  }
+  textarea { resize: vertical; min-height: 90px; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .counter { text-align: right; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; min-width: 0; }
+
+  button {
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+    padding: 10px 14px; border-radius: 8px;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); border: 0; width: 100%; padding: 13px; margin-top: 16px; font-size: 15px; }
+  .small { padding: 6px 10px; font-size: 12px; }
+
+  .tabs { display: flex; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 3px; }
+  .tabs button { flex: 1; border: 0; background: transparent; padding: 8px; }
+  .tabs button.active { background: var(--accent); }
+
+  .toggle { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; font-size: 14px; }
+  .switch { position: relative; width: 42px; height: 24px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: var(--border); border-radius: 999px; transition: .2s; cursor: pointer; }
+  .slider::before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+  .switch input:checked + .slider { background: var(--accent); }
+  .switch input:checked + .slider::before { transform: translateX(18px); }
+  .switch input:focus-visible + .slider { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  details { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; }
+  summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+
+  .keyrow { display: flex; gap: 8px; }
+  .keyrow input { flex: 1; }
+  .note { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; }
+  .status-dot.ok { background: var(--ok); }
+  .status-dot.err { background: var(--err); }
+
+  .alert { border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-top: 12px; display: none; }
+  .alert.show { display: block; }
+  .alert.err { background: rgba(255,92,92,.12); border: 1px solid rgba(255,92,92,.4); color: #ffb3b3; }
+  .alert.info { background: rgba(124,92,255,.12); border: 1px solid rgba(124,92,255,.4); }
+
+  .empty { text-align: center; color: var(--muted); padding: 48px 16px; }
+  .empty .big { font-size: 40px; }
+
+  .task { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; background: var(--panel); }
+  .task + .task { margin-top: 14px; }
+  .task-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .task-title { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); white-space: nowrap; }
+  .badge.run { color: var(--warn); border-color: rgba(245,184,65,.4); }
+  .badge.done { color: var(--ok); border-color: rgba(62,207,142,.4); }
+  .badge.fail { color: var(--err); border-color: rgba(255,92,92,.4); }
+  .task-meta { color: var(--muted); font-size: 12px; margin-top: 4px; overflow-wrap: anywhere; }
+  .progress { height: 4px; background: var(--panel-2); border-radius: 999px; overflow: hidden; margin-top: 10px; }
+  .progress > div { height: 100%; width: 30%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); animation: slide 1.4s infinite ease-in-out; }
+  @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+
+  .tracks { display: grid; gap: 12px; margin-top: 12px; }
+  .track { display: grid; grid-template-columns: 96px 1fr; gap: 12px; background: var(--panel-2); border-radius: 10px; padding: 10px; }
+  .cover { width: 96px; height: 96px; border-radius: 8px; object-fit: cover; background: var(--border); }
+  .track h3 { font-size: 14px; margin: 0; }
+  .track .tags { font-size: 12px; color: var(--muted); margin: 2px 0 6px; overflow-wrap: anywhere; }
+  .track audio { width: 100%; height: 36px; }
+  .track-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .track-actions a { text-decoration: none; }
+  .lyrics-view { white-space: pre-wrap; font-size: 12px; color: var(--muted); max-height: 180px; overflow: auto; margin-top: 6px; background: var(--bg); border-radius: 6px; padding: 8px; display: none; }
+  .lyrics-view.show { display: block; }
+  @media (max-width: 480px) {
+    .track { grid-template-columns: 1fr; }
+    .cover { width: 100%; height: auto; aspect-ratio: 1; }
+  }
+
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; max-width: 640px; width: 100%; max-height: 90vh; overflow: auto; }
+  .lyric-opt { border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-top: 10px; }
+  .lyric-opt pre { white-space: pre-wrap; font-family: inherit; font-size: 13px; max-height: 200px; overflow: auto; margin: 6px 0; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 40px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo" aria-hidden="true">♪</div>
+      <div>
+        <h1>Suno Studio</h1>
+        <p class="sub">Make AI music from a prompt or your own lyrics</p>
+      </div>
+    </div>
+    <div class="credits" id="credits"><span class="status-dot" id="keyDot"></span>Credits: <b id="creditVal">—</b></div>
+  </header>
+
+  <div class="grid">
+    <!-- LEFT: controls -->
+    <div>
+      <section class="card">
+        <h2>1. Your API key</h2>
+        <div class="keyrow">
+          <input type="password" id="apiKey" placeholder="Paste your sunoapi.org API key" autocomplete="off" spellcheck="false">
+          <button id="toggleKey" type="button" title="Show or hide key">Show</button>
+          <button id="checkKey" type="button">Connect</button>
+        </div>
+        <p class="note">Your key stays in this browser tab's memory only. It is never saved and is cleared when you close or reload the page. Get a key at <a href="https://sunoapi.org/api-key" target="_blank" rel="noopener">sunoapi.org</a>.</p>
+      </section>
+
+      <section class="card">
+        <h2>2. Describe your song</h2>
+        <div class="tabs" role="tablist">
+          <button type="button" class="active" data-mode="simple" role="tab" aria-selected="true">Simple</button>
+          <button type="button" data-mode="custom" role="tab" aria-selected="false">Custom</button>
+        </div>
+
+        <!-- Simple mode -->
+        <div id="simpleFields">
+          <label for="simplePrompt">Song description <span class="hint">— lyrics are written for you</span></label>
+          <textarea id="simplePrompt" maxlength="500" placeholder="An upbeat summer pop song about road-tripping with friends along the coast"></textarea>
+          <div class="counter"><span id="simpleCount">0</span>/500</div>
+        </div>
+
+        <!-- Custom mode -->
+        <div id="customFields" hidden>
+          <label for="title">Title</label>
+          <input type="text" id="title" maxlength="80" placeholder="Coastline">
+          <label for="style">Style <span class="hint">— genre, mood, instruments</span></label>
+          <input type="text" id="style" placeholder="indie pop, dreamy synths, female vocals, 110 bpm">
+          <div class="counter"><span id="styleCount">0</span>/<span id="styleMax">1000</span></div>
+          <div id="lyricsWrap">
+            <label for="lyrics" style="display:flex;justify-content:space-between;align-items:center;">
+              <span>Lyrics</span>
+              <button type="button" class="small" id="lyricsHelperBtn">✨ Write lyrics for me</button>
+            </label>
+            <textarea id="lyrics" rows="8" placeholder="[Verse]&#10;Windows down, the radio loud...&#10;&#10;[Chorus]&#10;..."></textarea>
+            <div class="counter"><span id="lyricsCount">0</span>/<span id="lyricsMax">5000</span></div>
+          </div>
+        </div>
+
+        <div class="toggle">
+          <span>Instrumental (no vocals)</span>
+          <label class="switch" style="margin:0"><input type="checkbox" id="instrumental"><span class="slider"></span></label>
+        </div>
+
+        <label for="model">Model</label>
+        <select id="model">
+          <option value="V5">V5 — latest, best quality</option>
+          <option value="V4_5PLUS">V4.5+ — richer sound, up to 8 min</option>
+          <option value="V4_5" selected>V4.5 — smart prompts, up to 8 min</option>
+          <option value="V4">V4 — improved vocals, up to 4 min</option>
+          <option value="V3_5">V3.5 — solid structure, up to 4 min</option>
+        </select>
+
+        <details id="advanced">
+          <summary>Advanced options</summary>
+          <div id="advancedCustom">
+            <label for="negativeTags">Exclude styles <span class="hint">(optional)</span></label>
+            <input type="text" id="negativeTags" placeholder="heavy metal, screaming">
+            <label for="vocalGender">Vocal gender <span class="hint">(optional)</span></label>
+            <select id="vocalGender">
+              <option value="">Auto</option>
+              <option value="f">Female</option>
+              <option value="m">Male</option>
+            </select>
+          </div>
+          <p class="note" id="advancedNote">Advanced options apply in Custom mode.</p>
+        </details>
+
+        <button type="button" class="primary" id="generateBtn">🎵 Generate music</button>
+        <div class="alert err" id="formError" role="alert"></div>
+      </section>
+    </div>
+
+    <!-- RIGHT: results -->
+    <div>
+      <section class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+          <h2 style="margin:0">Your tracks</h2>
+          <button type="button" class="small" id="clearBtn">Clear list</button>
+        </div>
+        <p class="note">Each request makes two variations. Songs usually start streaming in 30–40 seconds and finish in 2–3 minutes. Download links from Suno expire after about 15 days.</p>
+        <div id="tasks" style="margin-top:14px">
+          <div class="empty" id="empty">
+            <div class="big">🎧</div>
+            <p>Connect your API key, describe a song, and hit Generate.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <footer>Powered by the <a href="https://docs.sunoapi.org" target="_blank" rel="noopener">Suno API</a>.</footer>
+</div>
+
+<!-- Lyrics helper modal -->
+<div class="modal-bg" id="lyricsModal" role="dialog" aria-modal="true" aria-labelledby="lyricsModalTitle">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 id="lyricsModalTitle" style="margin:0;font-size:16px">Write lyrics with AI</h2>
+      <button type="button" class="small" id="closeLyrics">Close</button>
+    </div>
+    <label for="lyricsPrompt">What should the song be about?</label>
+    <textarea id="lyricsPrompt" maxlength="200" placeholder="A heartfelt song about moving to a new city and missing home"></textarea>
+    <div class="counter"><span id="lyricsPromptCount">0</span>/200</div>
+    <button type="button" class="primary" id="genLyricsBtn" style="margin-top:8px">Generate lyrics</button>
+    <div class="alert info" id="lyricsStatus"></div>
+    <div id="lyricsResults"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // On Netlify (or `netlify dev`) requests go through the same-origin proxy in netlify.toml.
+  // Opening the file directly falls back to calling the API host itself.
+  const API_BASE = location.protocol === "file:" ? "https://api.sunoapi.org/api/v1" : "/api/suno";
+  const CALLBACK_URL = location.protocol === "file:" ? "https://example.com/callback" : location.origin + "/api/callback";
+  const POLL_MS = 5000;
+  const MAX_POLL_MS = 10 * 60 * 1000;
+
+  // The key lives only in this closure variable — never in storage, cookies, or the URL.
+  let apiKey = "";
+  let mode = "simple";
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    apiKey: $("apiKey"), toggleKey: $("toggleKey"), checkKey: $("checkKey"),
+    keyDot: $("keyDot"), creditVal: $("creditVal"),
+    simpleFields: $("simpleFields"), customFields: $("customFields"),
+    simplePrompt: $("simplePrompt"), title: $("title"), style: $("style"), lyrics: $("lyrics"),
+    lyricsWrap: $("lyricsWrap"), instrumental: $("instrumental"), model: $("model"),
+    negativeTags: $("negativeTags"), vocalGender: $("vocalGender"),
+    advancedCustom: $("advancedCustom"), advancedNote: $("advancedNote"),
+    generateBtn: $("generateBtn"), formError: $("formError"),
+    tasks: $("tasks"), empty: $("empty"), clearBtn: $("clearBtn"),
+    lyricsModal: $("lyricsModal"), lyricsPrompt: $("lyricsPrompt"), genLyricsBtn: $("genLyricsBtn"),
+    lyricsStatus: $("lyricsStatus"), lyricsResults: $("lyricsResults"),
+  };
+
+  // ---------- API helpers ----------
+  async function api(path, { method = "GET", body } = {}) {
+    if (!apiKey) throw new Error("Add your API key first.");
+    let res;
+    try {
+      res = await fetch(API_BASE + path, {
+        method,
+        headers: {
+          "Authorization": "Bearer " + apiKey,
+          ...(body ? { "Content-Type": "application/json" } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch (e) {
+      throw new Error("Network error — could not reach the Suno API.");
+    }
+    let json = null;
+    try { json = await res.json(); } catch (_) { /* non-JSON */ }
+    const code = json && typeof json.code === "number" ? json.code : res.status;
+    if (!res.ok || code !== 200) {
+      throw new Error(friendlyError(code, json && json.msg));
+    }
+    return json.data;
+  }
+
+  function friendlyError(code, msg) {
+    const map = {
+      400: "Invalid request — check your inputs.",
+      401: "Unauthorized — your API key is invalid.",
+      404: "Not found.",
+      405: "Rate limit exceeded — please wait a moment.",
+      413: "Your prompt or lyrics are too long.",
+      429: "Not enough credits on your account.",
+      430: "You're sending requests too fast — slow down a bit.",
+      455: "Suno is under maintenance — try again later.",
+      500: "Suno server error — try again shortly.",
+    };
+    return (msg ? msg + " " : "") + (map[code] ? "(" + map[code] + ")" : "(code " + code + ")");
+  }
+
+  // ---------- API key ----------
+  els.toggleKey.addEventListener("click", () => {
+    const hidden = els.apiKey.type === "password";
+    els.apiKey.type = hidden ? "text" : "password";
+    els.toggleKey.textContent = hidden ? "Hide" : "Show";
+  });
+
+  async function connect() {
+    apiKey = els.apiKey.value.trim();
+    if (!apiKey) { setKeyState(false); els.creditVal.textContent = "—"; return; }
+    els.checkKey.disabled = true;
+    els.checkKey.textContent = "…";
+    try {
+      await refreshCredits();
+      setKeyState(true);
+      hideError();
+    } catch (e) {
+      setKeyState(false);
+      showError(e.message);
+    } finally {
+      els.checkKey.disabled = false;
+      els.checkKey.textContent = "Connect";
+    }
+  }
+
+  async function refreshCredits() {
+    const credits = await api("/generate/credit");
+    els.creditVal.textContent = typeof credits === "number" ? credits.toLocaleString() : String(credits);
+  }
+
+  function setKeyState(ok) {
+    els.keyDot.className = "status-dot " + (ok ? "ok" : (apiKey ? "err" : ""));
+  }
+
+  els.checkKey.addEventListener("click", connect);
+  els.apiKey.addEventListener("keydown", (e) => { if (e.key === "Enter") connect(); });
+  els.apiKey.addEventListener("input", () => { apiKey = els.apiKey.value.trim(); });
+
+  // ---------- Mode + limits ----------
+  const isNewModel = () => ["V4_5", "V4_5PLUS", "V5"].includes(els.model.value);
+  function limits() {
+    return { style: isNewModel() ? 1000 : 200, lyrics: isNewModel() ? 5000 : 3000 };
+  }
+
+  function applyLimits() {
+    const l = limits();
+    els.style.maxLength = l.style; $("styleMax").textContent = l.style;
+    els.lyrics.maxLength = l.lyrics; $("lyricsMax").textContent = l.lyrics;
+    updateCounters();
+  }
+
+  function updateCounters() {
+    $("simpleCount").textContent = els.simplePrompt.value.length;
+    $("styleCount").textContent = els.style.value.length;
+    $("lyricsCount").textContent = els.lyrics.value.length;
+    $("lyricsPromptCount").textContent = els.lyricsPrompt.value.length;
+  }
+  [els.simplePrompt, els.style, els.lyrics, els.lyricsPrompt].forEach((el) => el.addEventListener("input", updateCounters));
+
+  function setMode(m) {
+    mode = m;
+    document.querySelectorAll(".tabs button").forEach((b) => {
+      const active = b.dataset.mode === m;
+      b.classList.toggle("active", active);
+      b.setAttribute("aria-selected", active);
+    });
+    els.simpleFields.hidden = m !== "simple";
+    els.customFields.hidden = m !== "custom";
+    els.advancedCustom.hidden = m !== "custom";
+    els.advancedNote.hidden = m === "custom";
+    syncInstrumental();
+  }
+  document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+
+  function syncInstrumental() {
+    const instr = els.instrumental.checked;
+    els.lyricsWrap.hidden = instr;
+    els.vocalGender.disabled = instr;
+  }
+  els.instrumental.addEventListener("change", syncInstrumental);
+  els.model.addEventListener("change", applyLimits);
+
+  // ---------- Generate ----------
+  function showError(msg) { els.formError.textContent = msg; els.formError.classList.add("show"); }
+  function hideError() { els.formError.classList.remove("show"); }
+
+  function buildRequest() {
+    const instrumental = els.instrumental.checked;
+    const body = {
+      customMode: mode === "custom",
+      instrumental,
+      model: els.model.value,
+      callBackUrl: CALLBACK_URL,
+    };
+    if (mode === "simple") {
+      const prompt = els.simplePrompt.value.trim();
+      if (!prompt) throw new Error("Describe the song you want.");
+      body.prompt = prompt;
+    } else {
+      const title = els.title.value.trim();
+      const style = els.style.value.trim();
+      const lyrics = els.lyrics.value.trim();
+      if (!title) throw new Error("Add a title.");
+      if (!style) throw new Error("Add a style (e.g. \"lo-fi hip hop, chill\").");
+      if (!instrumental && !lyrics) throw new Error("Add lyrics, use the lyrics helper, or switch on Instrumental.");
+      body.title = title;
+      body.style = style;
+      if (!instrumental) body.prompt = lyrics;
+      const neg = els.negativeTags.value.trim();
+      if (neg) body.negativeTags = neg;
+      if (!instrumental && els.vocalGender.value) body.vocalGender = els.vocalGender.value;
+    }
+    return body;
+  }
+
+  els.generateBtn.addEventListener("click", async () => {
+    hideError();
+    if (!apiKey) { showError("Paste your API key and click Connect first."); els.apiKey.focus(); return; }
+    let body;
+    try { body = buildRequest(); } catch (e) { showError(e.message); return; }
+
+    els.generateBtn.disabled = true;
+    els.generateBtn.textContent = "Submitting…";
+    try {
+      const data = await api("/generate", { method: "POST", body });
+      const label = body.title || (body.prompt || "").slice(0, 60) || "Instrumental";
+      startTask(data.taskId, label, body);
+    } catch (e) {
+      showError(e.message);
+    } finally {
+      els.generateBtn.disabled = false;
+      els.generateBtn.textContent = "🎵 Generate music";
+    }
+  });
+
+  // ---------- Task tracking ----------
+  const STATUS_TEXT = {
+    PENDING: ["Queued", "run"],
+    TEXT_SUCCESS: ["Writing lyrics done", "run"],
+    FIRST_SUCCESS: ["First track ready", "run"],
+    SUCCESS: ["Complete", "done"],
+    CREATE_TASK_FAILED: ["Failed to create", "fail"],
+    GENERATE_AUDIO_FAILED: ["Generation failed", "fail"],
+    CALLBACK_EXCEPTION: ["Callback error", "fail"],
+    SENSITIVE_WORD_ERROR: ["Blocked: sensitive content", "fail"],
+  };
+  const DONE = new Set(["SUCCESS", "CREATE_TASK_FAILED", "GENERATE_AUDIO_FAILED", "SENSITIVE_WORD_ERROR"]);
+
+  function el(tag, attrs = {}, ...children) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") node.className = v;
+      else if (k === "text") node.textContent = v;
+      else node.setAttribute(k, v);
+    }
+    children.forEach((c) => c && node.append(c));
+    return node;
+  }
+
+  function startTask(taskId, label, body) {
+    els.empty.hidden = true;
+    const badge = el("span", { class: "badge run", text: "Submitted" });
+    const progress = el("div", { class: "progress" }, el("div"));
+    const tracks = el("div", { class: "tracks" });
+    const meta = el("div", {
+      class: "task-meta",
+      text: `${body.model.replace("_", ".").replace("PLUS", "+")} · ${body.customMode ? "Custom" : "Simple"}${body.instrumental ? " · Instrumental" : ""}${body.style ? " · " + body.style : ""}`,
+    });
+    const card = el("div", { class: "task" },
+      el("div", { class: "task-head" }, el("div", { class: "task-title", text: label }), badge),
+      meta, progress, tracks);
+    els.tasks.prepend(card);
+
+    const started = Date.now();
+    const rendered = new Map();
+
+    const tick = async () => {
+      let data;
+      try {
+        data = await api("/generate/record-info?taskId=" + encodeURIComponent(taskId));
+      } catch (e) {
+        if (Date.now() - started > MAX_POLL_MS) return fail("Stopped checking: " + e.message);
+        return setTimeout(tick, POLL_MS * 2);
+      }
+      const status = data.status || "PENDING";
+      const [text, cls] = STATUS_TEXT[status] || [status, "run"];
+      badge.textContent = text;
+      badge.className = "badge " + cls;
+
+      const items = (data.response && data.response.sunoData) || [];
+      items.forEach((t, i) => renderTrack(tracks, rendered, t, i));
+
+      if (DONE.has(status)) {
+        progress.remove();
+        if (cls === "fail") {
+          meta.append(el("div", { style: "color:var(--err);margin-top:4px", text: data.errorMessage || text }));
+        }
+        refreshCredits().catch(() => {});
+        return;
+      }
+      if (Date.now() - started > MAX_POLL_MS) return fail("Timed out waiting for Suno. Task ID: " + taskId);
+      setTimeout(tick, POLL_MS);
+    };
+
+    function fail(msg) {
+      progress.remove();
+      badge.textContent = "Stopped";
+      badge.className = "badge fail";
+      meta.append(el("div", { style: "color:var(--err);margin-top:4px", text: msg }));
+    }
+
+    setTimeout(tick, 3000);
+  }
+
+  function safeUrl(u) {
+    try { const url = new URL(u); return url.protocol === "https:" || url.protocol === "http:" ? url.href : ""; }
+    catch (_) { return ""; }
+  }
+
+  function renderTrack(container, rendered, t, index) {
+    const key = t.id || "idx" + index;
+    const audioSrc = safeUrl(t.audioUrl) || safeUrl(t.streamAudioUrl) || safeUrl(t.sourceStreamAudioUrl);
+    const finalAudio = !!safeUrl(t.audioUrl);
+    let entry = rendered.get(key);
+
+    if (!entry) {
+      const img = el("img", { class: "cover", alt: "Cover art", loading: "lazy" });
+      const h3 = el("h3");
+      const tags = el("div", { class: "tags" });
+      const audio = el("audio", { controls: "", preload: "none" });
+      const actions = el("div", { class: "track-actions" });
+      const lyricsView = el("div", { class: "lyrics-view" });
+      const node = el("div", { class: "track" }, img, el("div", {}, h3, tags, audio, actions, lyricsView));
+      container.append(node);
+      entry = { img, h3, tags, audio, actions, lyricsView, final: false, src: "" };
+      rendered.set(key, entry);
+    }
+
+    const cover = safeUrl(t.imageUrl) || safeUrl(t.sourceImageUrl);
+    if (cover && entry.img.src !== cover) entry.img.src = cover;
+    entry.h3.textContent = t.title || "Untitled";
+    const dur = t.duration ? ` · ${Math.floor(t.duration / 60)}:${String(Math.round(t.duration % 60)).padStart(2, "0")}` : "";
+    entry.tags.textContent = (t.tags || "") + dur + (finalAudio ? "" : (audioSrc ? " · streaming preview" : " · generating…"));
+
+    // Swap to the final MP3 once available, without interrupting playback of the stream.
+    if (audioSrc && audioSrc !== entry.src && (!entry.src || entry.audio.paused)) {
+      entry.audio.src = audioSrc;
+      entry.src = audioSrc;
+    }
+
+    if (finalAudio && !entry.final) {
+      entry.final = true;
+      entry.actions.replaceChildren();
+      const dl = el("a", { href: audioSrc, target: "_blank", rel: "noopener", download: (t.title || "track") + ".mp3" },
+        el("button", { type: "button", class: "small", text: "⬇ MP3" }));
+      entry.actions.append(dl);
+      if (cover) {
+        entry.actions.append(el("a", { href: cover, target: "_blank", rel: "noopener" },
+          el("button", { type: "button", class: "small", text: "🖼 Cover" })));
+      }
+      if (t.prompt) {
+        const btn = el("button", { type: "button", class: "small", text: "📝 Lyrics" });
+        entry.lyricsView.textContent = t.prompt;
+        btn.addEventListener("click", () => entry.lyricsView.classList.toggle("show"));
+        entry.actions.append(btn);
+      }
+      const copy = el("button", { type: "button", class: "small", text: "🔗 Copy link" });
+      copy.addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(audioSrc); copy.textContent = "✓ Copied"; }
+        catch (_) { copy.textContent = "Copy failed"; }
+        setTimeout(() => (copy.textContent = "🔗 Copy link"), 1500);
+      });
+      entry.actions.append(copy);
+    }
+  }
+
+  els.clearBtn.addEventListener("click", () => {
+    els.tasks.querySelectorAll(".task").forEach((n) => n.remove());
+    els.empty.hidden = false;
+  });
+
+  // ---------- Lyrics helper ----------
+  function openLyrics() {
+    if (!apiKey) { showError("Paste your API key and click Connect first."); return; }
+    els.lyricsModal.classList.add("show");
+    if (!els.lyricsPrompt.value && els.title.value) els.lyricsPrompt.value = els.title.value;
+    updateCounters();
+    els.lyricsPrompt.focus();
+  }
+  function closeLyrics() { els.lyricsModal.classList.remove("show"); }
+  $("lyricsHelperBtn").addEventListener("click", openLyrics);
+  $("closeLyrics").addEventListener("click", closeLyrics);
+  els.lyricsModal.addEventListener("click", (e) => { if (e.target === els.lyricsModal) closeLyrics(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeLyrics(); });
+
+  function lyricsStatus(msg, show = true) {
+    els.lyricsStatus.textContent = msg;
+    els.lyricsStatus.classList.toggle("show", show);
+  }
+
+  els.genLyricsBtn.addEventListener("click", async () => {
+    const prompt = els.lyricsPrompt.value.trim();
+    if (!prompt) { lyricsStatus("Describe what the song should be about."); return; }
+    els.genLyricsBtn.disabled = true;
+    els.lyricsResults.replaceChildren();
+    lyricsStatus("Writing lyrics… this usually takes 10–30 seconds.");
+    try {
+      const { taskId } = await api("/lyrics", { method: "POST", body: { prompt, callBackUrl: CALLBACK_URL } });
+      const started = Date.now();
+      while (true) {
+        await new Promise((r) => setTimeout(r, 3000));
+        const data = await api("/lyrics/record-info?taskId=" + encodeURIComponent(taskId));
+        const status = data.status;
+        if (status === "SUCCESS") {
+          const options = ((data.response && data.response.data) || []).filter((o) => o.text);
+          if (!options.length) throw new Error("No lyrics came back — try a different description.");
+          lyricsStatus("Pick a version to use:");
+          options.forEach((o, i) => {
+            const use = el("button", { type: "button", class: "small", text: "Use these lyrics" });
+            use.addEventListener("click", () => {
+              els.lyrics.value = o.text.slice(0, limits().lyrics);
+              if (!els.title.value && o.title) els.title.value = o.title.slice(0, 80);
+              updateCounters();
+              closeLyrics();
+            });
+            els.lyricsResults.append(el("div", { class: "lyric-opt" },
+              el("strong", { text: o.title || "Option " + (i + 1) }),
+              el("pre", { text: o.text }), use));
+          });
+          break;
+        }
+        if (status && status !== "PENDING") throw new Error(data.errorMessage || "Lyrics generation failed (" + status + ").");
+        if (Date.now() - started > 3 * 60 * 1000) throw new Error("Timed out waiting for lyrics.");
+      }
+    } catch (e) {
+      lyricsStatus(e.message);
+    } finally {
+      els.genLyricsBtn.disabled = false;
+    }
+  });
+
+  // ---------- Init ----------
+  setMode("simple");
+  applyLimits();
+})();
+</script>
+</body>
+</html>

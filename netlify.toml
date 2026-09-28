@@ -1,0 +1,26 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+# Same-origin proxy to the Suno API so the browser never hits CORS issues.
+# The user's API key travels in the Authorization header of each request and
+# is never stored on the server.
+[[redirects]]
+  from = "/api/suno/*"
+  to = "https://api.sunoapi.org/api/v1/:splat"
+  status = 200
+  force = true
+
+# Suno requires a callBackUrl on every task. The app polls for results instead,
+# so this endpoint simply acknowledges the callback.
+[[redirects]]
+  from = "/api/callback"
+  to = "/.netlify/functions/callback"
+  status = 200
+  force = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
